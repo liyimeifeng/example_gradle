@@ -1,0 +1,105 @@
+apply plugin: 'com.android.application'
+
+android {
+
+    compileSdkVersion 19
+    buildToolsVersion '25.0.0'
+
+    packagingOptions {
+        exclude 'META-INF/services/javax.annotation.processing.Processor'
+        exclude 'META-INF/LICENSE.txt'
+        exclude 'META-INF/NOTICE.txt'
+        exclude 'META-INF/maven/com.squareup.okio/okio/pom.xml'
+        exclude 'META-INF/maven/com.squareup.okio/okio/pom.properties'
+    }
+    ext {
+        applicationName = "unknown"
+        copyTaskSwitch = false
+    }
+    signingConfigs {
+        xiaokuai {
+            storeFile file("../xxxxxx.jks")
+            storePassword "xxxxxx"
+            keyAlias 'xxxxxx'
+            keyPassword 'xxxxxx'
+            v2SigningEnabled false
+        }
+        custom {
+            storeFile file("../xxxxxx.jks")
+            storePassword "xxxxxxxxxxxx"
+            keyAlias 'xxxxxx'
+            keyPassword 'xxxxxxxxxxxx'
+            v2SigningEnabled false
+        }
+        zhongwu {
+            storeFile file("../xxxxxx.jks")
+            storePassword "xxxxxx"
+            keyAlias 'xxxxxx'
+            keyPassword 'xxxxxx'
+            v2SigningEnabled false
+        }
+        huawei3716 {
+            storeFile file("../xxxxxx.jks")
+            storePassword "xxxxxx"
+            keyAlias 'xxxxxx'
+            keyPassword 'xxxxxx'
+            v2SigningEnabled false
+        }
+        huaweik3v2 {
+            storeFile file("../xxxxxx.jks")
+            storePassword "xxxxxx"
+            keyAlias 'xxxxxx'
+            keyPassword 'xxxxxx'
+            v2SigningEnabled false
+        }
+        rk3288 {
+            storeFile file("../xxxxxx.jks")
+            storePassword "xxxxxx"
+            keyAlias 'xxxxxx'
+            keyPassword 'xxxxxx'
+            v2SigningEnabled false
+        }
+    }
+    lintOptions {
+        disable 'InvalidPackage'
+        abortOnError false
+    }
+    def archiveBuildTypes = ["release", "debug"]
+
+    applicationVariants.all { variant ->
+        variant.outputs.each { output ->
+            if ((variant.buildType.name.contains(archiveBuildTypes[0]) || variant.buildType.name.contains(archiveBuildTypes[1]))&&!variant.buildType.name.contains("universal")&&!output.outputFile.name.contains("universal")) {
+                def DIST_DIRECTORY;
+                DIST_DIRECTORY = "../build/output/${variant.buildType.name}"
+                // Move output into DIST_DIRECTORY
+                print "buildtype name is:${variant.buildType.name}\n"
+                print "variant  name is:${variant.name.capitalize()}\n"
+                def taskSuffix = variant.name.capitalize()
+                def assembleTaskName = "assemble${taskSuffix}"
+                if (tasks.findByName(assembleTaskName) && copyTaskSwitch) {
+                    def copyAPKTask = tasks.create(name: "archive${taskSuffix}", type: org.gradle.api.tasks.Copy, overwrite: true) {
+                        description "Archive/copy APK and mappings.txt to a versioned folder."
+                        print "Copying APK&mappings.txt from: ${buildDir}\n"
+                        print "flavorname is ${variant.flavorName}\n"
+                        from("${buildDir}") {    //重点就是这句话，把app/build下的apk copy到指定DIST_DIRECTORY文件夹
+                            include "**/mapping/${variant.buildType.name}/mapping.txt"
+                            include "**/apk/${output.outputFile.name}"
+                            include "**/apk/${variant.flavorName}/${variant.buildType.name}/${output.outputFile.name}"
+                        }
+                        into DIST_DIRECTORY
+                        eachFile { file ->
+                            //Update output filename
+                            def versionName=variant.versionName
+                            versionName=versionName.replace("_v_","_${variant.flavorName}_${variant.buildType.name}_v_")
+                            file.name = "${versionName}.apk"
+                            file.path = file.name // so we have a "flat" copy
+                        }
+                        includeEmptyDirs = false
+                    }
+                    tasks[assembleTaskName].finalizedBy = [copyAPKTask]
+                }
+            }
+        }
+    }
+
+}
